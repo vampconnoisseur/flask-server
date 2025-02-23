@@ -19,7 +19,7 @@ data "aws_security_group" "existing_flask_sg" {
 }
 
 resource "aws_security_group" "flask_sg" {
-  count = length(data.aws_security_group.existing_flask_sg.id) == 0 ? 1 : 0
+  count = length(try(data.aws_security_groups.existing_flask_sg.ids, [])) == 0 ? 1 : 0
 
   name        = "flask_sg"
   description = "Allow inbound traffic to Flask app"
