@@ -11,7 +11,16 @@ data "aws_instances" "existing_flask_server" {
   }
 }
 
+data "aws_security_group" "existing_flask_sg" {
+  filter {
+    name   = "group-name"
+    values = ["flask_sg"]
+  }
+}
+
 resource "aws_security_group" "flask_sg" {
+  count = length(data.aws_security_group.existing_flask_sg.id) == 0 ? 1 : 0
+
   name        = "flask_sg"
   description = "Allow inbound traffic to Flask app"
 
@@ -69,7 +78,7 @@ resource "aws_instance" "flask_server" {
   instance_type = "t2.micro"
   key_name      = "my_key"
 
-  security_groups = [aws_security_group.flask_sg.name]
+  security_groups = aws_security_group.flask_sg.*.name
 
   user_data = <<-EOF
             #!/bin/bash
