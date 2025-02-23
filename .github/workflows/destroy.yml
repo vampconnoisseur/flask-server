@@ -7,7 +7,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      AWS_REGION: "us-east-1"
+      AWS_REGION: us-east-1
+      CLIENT_NAME: jaiditya
 
     steps:
       - name: Checkout
@@ -22,11 +23,14 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3.1.1
+        uses: hashicorp/setup-terraform@v3.1.2
 
       - name: Terraform Init
         id: init
-        run: terraform init
+        env:
+          AWS_BUCKET_NAME: flask-server-bucket
+          AWS_BUCKET_KEY_NAME: state/terraform-${{env.CLIENT_NAME}}.tfstate
+        run: terraform init -backend-config="bucket=${AWS_BUCKET_NAME}" -backend-config="key=${AWS_BUCKET_KEY_NAME}" -backend-config="region=${AWS_REGION}"
 
       - name: Show Destroy plan
         run: terraform plan -destroy
