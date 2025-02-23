@@ -78,7 +78,7 @@ resource "aws_instance" "flask_server" {
   instance_type = "t2.micro"
   key_name      = "my_key"
 
-  security_groups = length(data.aws_security_group.existing_flask_sg.id) > 0 ? [data.aws_security_group.existing_flask_sg.id] : aws_security_group.flask_sg.*.id
+  security_groups = length(data.aws_security_group.existing_flask_sg.ids) > 0 ? [data.aws_security_group.existing_flask_sg.id] : [aws_security_group.flask_sg[0].id]
 
   user_data = <<-EOF
             #!/bin/bash
