@@ -4,23 +4,19 @@ provider "aws" {
 
 variable "image_tag" {}
 
-data "aws_instances" "existing_flask_server" {
-  filter {
-    name   = "tag:Name"
-    values = ["flask_server"]
-  }
-}
-
-data "aws_security_group" "existing_flask_sg" {
-  filter {
-    name   = "group-name"
-    values = ["flask_sg"]
+resource "null_resource" "delete_existing_sg" {
+  provisioner "local-exec" {
+    command = <<EOT
+      EXISTING_SG_ID=$(aws ec2 describe-security-groups --filters Name=group-name,Values=flask_sg --query "SecurityGroups[0].GroupId" --output text 2>/dev/null)
+      if [[ "$EXISTING_SG_ID" != "None" ]]; then
+        aws ec2 delete-security-group --group-id $EXISTING_SG_ID
+      fi
+    EOT
   }
 }
 
 resource "aws_security_group" "flask_sg" {
-  count = length(data.aws_security_group.existing_flask_sg.id) == 0 ? 1 : 0
-
+  depends_on  = [null_resource.delete_existing_sg]
   name        = "flask_sg"
   description = "Allow inbound traffic to Flask app"
 
@@ -46,39 +42,14 @@ resource "aws_security_group" "flask_sg" {
   }
 }
 
-resource "null_resource" "update_flask_server" {
-  count = length(data.aws_instances.existing_flask_server.ids) > 0 ? 1 : 0
-
-  connection {
-    type        = "ssh"
-    user        = "ubuntu"
-    private_key = file("./my_key.pem")
-    host        = data.aws_instances.existing_flask_server.public_ips[0]
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "echo 'Updating Flask server container...'",
-
-      "if ! command -v docker &> /dev/null; then sudo apt-get update -y && sudo apt-get install -y docker.io; sudo systemctl start docker; sudo systemctl enable docker; fi",
-
-      "if sudo docker ps -a --format '{{.Names}}' | grep -q '^flask-container$'; then sudo docker stop flask-container && sudo docker rm flask-container; fi",
-
-      "sudo docker pull vampconnoisseur/flask-server:${var.image_tag}",
-
-      "sudo docker run -d --name flask-container -p 8765:8765 vampconnoisseur/flask-server:${var.image_tag}"
-    ]
-  }
-}
-
 resource "aws_instance" "flask_server" {
-  count = length(data.aws_instances.existing_flask_server.ids) == 0 ? 1 : 0
-
   ami           = "ami-04b4f1a9cf54c11d0"
   instance_type = "t2.micro"
   key_name      = "my_key"
 
-  security_groups = length(data.aws_security_group.existing_flask_sg.ids) > 0 ? [data.aws_security_group.existing_flask_sg.id] : [aws_security_group.flask_sg[0].id]
+  vpc_security_group_ids = [aws_security_group.flask_sg.id]
+
+  depends_on = [aws_security_group.flask_sg]
 
   user_data = <<-EOF
             #!/bin/bash
@@ -105,7 +76,7 @@ resource "aws_instance" "flask_server" {
 }
 
 output "public_ip" {
-  value = length(data.aws_instances.existing_flask_server.ids) > 0 ? data.aws_instances.existing_flask_server.public_ips[0] : aws_instance.flask_server[0].public_ip
+  value = aws_instance.flask_server.public_ip
 }
 
 terraform {
