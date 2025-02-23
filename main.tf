@@ -72,7 +72,7 @@ resource "null_resource" "update_flask_server" {
 }
 
 resource "aws_instance" "flask_server" {
-  count = length(data.aws_instances.existing_flask_server.ids) == 0 ? 1 : 0
+  count = length(try(data.aws_instances.existing_flask_server.ids, [])) == 0 ? 1 : 0
 
   ami           = "ami-04b4f1a9cf54c11d0"
   instance_type = "t2.micro"
