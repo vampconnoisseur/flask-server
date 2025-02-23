@@ -63,7 +63,7 @@ jobs:
       - name: Terraform Init
         id: init
         env:
-          AWS_BUCKET_NAME: flask-server-bucket
+          AWS_BUCKET_NAME: flask-server-bucket-2
           AWS_BUCKET_KEY_NAME: state/terraform-${{env.CLIENT_NAME}}.tfstate
         run: terraform init -backend-config="bucket=${AWS_BUCKET_NAME}" -backend-config="key=${AWS_BUCKET_KEY_NAME}" -backend-config="region=${AWS_REGION}"
 
