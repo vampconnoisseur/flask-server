@@ -914,10 +914,7 @@ def send_error(error_message: str, block_id: str):
 
 @app.get("/test")
 async def test_route():
-    """
-    A simple test route to check if the API is working.
-    """
-    return {"message": "This test route is working awesome!"}
+    return {"message": "This test route is working!"}
 
 
 if __name__ == "__main__":
