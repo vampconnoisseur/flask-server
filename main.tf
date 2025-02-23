@@ -11,7 +11,16 @@ data "aws_instances" "existing_flask_server" {
   }
 }
 
+data "aws_security_group" "existing_flask_sg" {
+  filter {
+    name   = "group-name"
+    values = ["flask_sg"]
+  }
+}
+
 resource "aws_security_group" "flask_sg" {
+  count = length(data.aws_security_group.existing_flask_sg.id) == 0 ? 1 : 0
+
   name        = "flask_sg"
   description = "Allow inbound traffic to Flask app"
 
@@ -50,10 +59,13 @@ resource "null_resource" "update_flask_server" {
   provisioner "remote-exec" {
     inline = [
       "echo 'Updating Flask server container...'",
+
       "if ! command -v docker &> /dev/null; then sudo apt-get update -y && sudo apt-get install -y docker.io; sudo systemctl start docker; sudo systemctl enable docker; fi",
-      "CONTAINER_ID=$(sudo docker ps --filter 'ancestor=vampconnoisseur/flask-server' --format '{{.ID}}')",
-      "if [[ -n \"$CONTAINER_ID\" ]]; then sudo docker stop $CONTAINER_ID && sudo docker rm $CONTAINER_ID; fi",
+
+      "if sudo docker ps -a --format '{{.Names}}' | grep -q '^flask-container$'; then sudo docker stop flask-container && sudo docker rm flask-container; fi",
+
       "sudo docker pull vampconnoisseur/flask-server:${var.image_tag}",
+
       "sudo docker run -d --name flask-container -p 8765:8765 vampconnoisseur/flask-server:${var.image_tag}"
     ]
   }
@@ -66,7 +78,7 @@ resource "aws_instance" "flask_server" {
   instance_type = "t2.micro"
   key_name      = "my_key"
 
-  security_groups = [aws_security_group.flask_sg.name]
+  security_groups = aws_security_group.flask_sg.*.name
 
   user_data = <<-EOF
             #!/bin/bash
