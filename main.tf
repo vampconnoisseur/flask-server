@@ -69,7 +69,7 @@ resource "aws_instance" "flask_server" {
   instance_type = "t2.micro"
   key_name      = "my_key"
 
-  security_groups = aws_security_group.flask_sg.name
+  security_groups = [aws_security_group.flask_sg.name]
 
   user_data = <<-EOF
             #!/bin/bash
