@@ -11,20 +11,7 @@ data "aws_instances" "existing_flask_server" {
   }
 }
 
-data "aws_security_groups" "existing_flask_sg" {
-  filter {
-    name   = "group-name"
-    values = ["flask_sg"]
-  }
-}
-
-locals {
-  flask_sg_exists = length(try(data.aws_security_groups.existing_flask_sg.ids, [])) > 0
-}
-
 resource "aws_security_group" "flask_sg" {
-  count = local.flask_sg_exists ? 0 : 1
-
   name        = "flask_sg"
   description = "Allow inbound traffic to Flask app"
 
@@ -50,18 +37,12 @@ resource "aws_security_group" "flask_sg" {
   }
 }
 
-locals {
-  flask_server_exists = length(data.aws_instances.existing_flask_server.ids) > 0
-}
-
 resource "aws_instance" "flask_server" {
-  count = local.flask_server_exists ? 0 : 1
-
   ami           = "ami-04b4f1a9cf54c11d0"
   instance_type = "t2.micro"
   key_name      = "my_key"
 
-  security_groups = local.flask_sg_exists ? [data.aws_security_groups.existing_flask_sg.id] : aws_security_group.flask_sg[*].name
+  vpc_security_group_ids = [aws_security_group.flask_sg.id]
 
   user_data = <<-EOF
             #!/bin/bash
@@ -85,10 +66,20 @@ resource "aws_instance" "flask_server" {
   tags = {
     Name = "flask_server"
   }
+
+  lifecycle {
+    ignore_changes = [user_data]
+  }
 }
 
 resource "null_resource" "update_flask_server" {
-  count = local.flask_server_exists ? 1 : 0
+  count = length(data.aws_instances.existing_flask_server.ids) > 0 ? 1 : 0
+
+  triggers = {
+    always_run  = timestamp()
+    instance_id = data.aws_instances.existing_flask_server.ids[0]
+    image_tag   = var.image_tag
+  }
 
   connection {
     type        = "ssh"
@@ -113,7 +104,7 @@ resource "null_resource" "update_flask_server" {
 }
 
 output "public_ip" {
-  value = local.flask_server_exists ? data.aws_instances.existing_flask_server.public_ips[0] : aws_instance.flask_server[0].public_ip
+  value = aws_instance.flask_server.public_ip
 }
 
 terraform {
