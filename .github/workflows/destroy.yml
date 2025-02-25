@@ -34,4 +34,4 @@ jobs:
 
       - name: Terraform destroy
         id: destroy
-        run: terraform destroy -auto-approve -var "image_tag=$IMAGE_TAG
+        run: terraform destroy -auto-approve -var "image_tag=$IMAGE_TAG"
