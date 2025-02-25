@@ -22,6 +22,11 @@ jobs:
           role-session-name: ci-run-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Write SSH Key from GitHub Secrets
+        run: |
+          echo "${{ secrets.EC2_TOKEN }}" > my_key.pem
+          chmod 600 my_key.pem
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3.1.2
 
