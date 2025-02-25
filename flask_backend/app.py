@@ -914,7 +914,7 @@ def send_error(error_message: str, block_id: str):
 
 @app.get("/test")
 async def test_route():
-    return {"message": "My route is working!"}
+    return {"message": "My route is working nicely!"}
 
 
 if __name__ == "__main__":
